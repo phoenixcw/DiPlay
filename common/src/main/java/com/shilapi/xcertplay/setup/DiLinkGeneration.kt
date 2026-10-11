@@ -5,6 +5,7 @@ import android.os.Build
 
 /** The BYD head unit generation. The setup guide uses it only to explain which features apply. */
 enum class DiLinkGeneration(val key: String) {
+    DILINK_2("dilink2"),
     DILINK_3("dilink3"),
     DILINK_4("dilink4"),
     DILINK_5("dilink5"),
@@ -16,8 +17,9 @@ enum class DiLinkGeneration(val key: String) {
     data class Detection(val generation: DiLinkGeneration, val source: Source, val evidence: String?)
 
     companion object {
-        private val VERSION = Regex("""DiLink\s*([345])(?:\.\d+)?""", RegexOption.IGNORE_CASE)
+        private val VERSION = Regex("""DiLink\s*([2345])(?:\.\d+)?""", RegexOption.IGNORE_CASE)
         private const val CONTROLLER_VERSION_PROPERTY = "apps.setting.product.outswver"
+        private const val BYD_DEVICE_MANAGER = "android.hardware.bydauto.BYDAutoDeviceManager"
         private const val PREFS = "diplay"
         private const val KEY = "setup_dilink_generation"
 
@@ -26,12 +28,15 @@ enum class DiLinkGeneration(val key: String) {
         /**
          * BYD names the build after the head unit: DiLink 3.0 reports product `DiLink3.0` and a
          * `BYD-AUTO/DiLink3.0/...` fingerprint. DiLink 5.1 reports a generic `IVI` product on Android 13.
+         * DiLink 2.0 runs Android 7.1 with Qualcomm's generic `msm8953_64` build, which other brands
+         * ship too; only BYD's vehicle framework ([bydFramework]) tells it apart (#519).
          */
         fun detect(product: String?, fingerprint: String?, display: String?, sdkInt: Int,
-                   controllerVersion: String? = null): Detection {
+                   controllerVersion: String? = null, bydFramework: Boolean = false): Detection {
             for (value in listOf(product, fingerprint, display)) {
                 val match = value?.let(VERSION::find) ?: continue
                 val generation = when (match.groupValues[1]) {
+                    "2" -> DILINK_2
                     "3" -> DILINK_3
                     "4" -> DILINK_4
                     else -> DILINK_5
@@ -40,12 +45,18 @@ enum class DiLinkGeneration(val key: String) {
             }
             controllerVersion?.trim()?.takeIf { it.isNotEmpty() }?.let { version ->
                 val generation = when (version.substringBefore('.').toIntOrNull()) {
+                    // DiLink 2.0/2.1 controllers, from the community version table cited in #516.
+                    2, 4, 5, 8, 26 -> DILINK_2
                     13, 15, 18 -> DILINK_3
                     16, 17, 21 -> DILINK_4
                     23, 34, 57, 59 -> DILINK_5
                     else -> null
                 }
                 if (generation != null) return Detection(generation, Source.SYSTEM_VERSION, version)
+            }
+            // DiLink 3.0 and later run Android 9 or newer.
+            if (bydFramework && sdkInt < 28) {
+                return Detection(DILINK_2, Source.LIKELY, fingerprint?.takeIf { it.isNotBlank() })
             }
             if (fingerprint?.startsWith("BYD-AUTO/IVI/") == true && sdkInt >= 33) {
                 return Detection(DILINK_5, Source.LIKELY, fingerprint)
@@ -54,7 +65,9 @@ enum class DiLinkGeneration(val key: String) {
         }
 
         fun detect(): Detection = detect(Build.PRODUCT, Build.FINGERPRINT, Build.DISPLAY,
-            Build.VERSION.SDK_INT, readControllerVersion())
+            Build.VERSION.SDK_INT, readControllerVersion(), hasBydFramework())
+
+        private fun hasBydFramework(): Boolean = runCatching { Class.forName(BYD_DEVICE_MANAGER) }.isSuccess
 
         private fun readControllerVersion(): String? = runCatching {
             val cls = Class.forName("android.os.SystemProperties")

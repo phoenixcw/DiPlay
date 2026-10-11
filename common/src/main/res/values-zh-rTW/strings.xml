@@ -760,6 +760,7 @@
     <string name="setup_car_unknown">DiPlay 無法讀取 DiLink 版本。請在下方選擇，或保留「不確定」。</string>
     <string name="setup_car_choose">DiLink 版本</string>
     <string name="setup_car_evidence">系統版本：%1$s</string>
+    <string name="dilink_2">DiLink 2</string>
     <string name="dilink_3">DiLink 3</string>
     <string name="dilink_4">DiLink 4</string>
     <string name="dilink_5">DiLink 5</string>

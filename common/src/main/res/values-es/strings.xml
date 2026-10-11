@@ -696,6 +696,7 @@
     <string name="setup_car_unknown">DiPlay no pudo leer la versión de DiLink. Elígela abajo o deja No estoy seguro.</string>
     <string name="setup_car_choose">Versión de DiLink</string>
     <string name="setup_car_evidence">Versión del sistema: %1$s</string>
+    <string name="dilink_2">DiLink 2</string>
     <string name="dilink_3">DiLink 3</string>
     <string name="dilink_4">DiLink 4</string>
     <string name="dilink_5">DiLink 5</string>

@@ -33,6 +33,7 @@ class SetupGuideTest {
 
     @Test fun controllerVersionIsDetectedBeforeTheGenericIviFallback() {
         val expected = mapOf(
+            DiLinkGeneration.DILINK_2 to listOf(2, 4, 5, 8, 26),
             DiLinkGeneration.DILINK_3 to listOf(13, 15, 18),
             DiLinkGeneration.DILINK_4 to listOf(16, 17, 21),
             DiLinkGeneration.DILINK_5 to listOf(23, 34, 57, 59),
@@ -58,6 +59,32 @@ class SetupGuideTest {
         }
     }
 
+    @Test fun diLink2IsLikelyOnlyWithBydFrameworkOnAndroid7() {
+        // A Leapmotor T03 (#566) reports this generic Qualcomm build; DiLink 2.0 uses the same N2G47H build (#519).
+        val fingerprint = "Android/msm8953_64/msm8953_64:7.1.2/N2G47H/714:user/test-keys"
+        val byd = DiLinkGeneration.detect("msm8953_64", fingerprint, "N2G47H test-keys", 25, bydFramework = true)
+        assertEquals(DiLinkGeneration.DILINK_2, byd.generation)
+        assertEquals(Source.LIKELY, byd.source)
+        assertEquals(fingerprint, byd.evidence)
+
+        val other = DiLinkGeneration.detect("msm8953_64", fingerprint, "N2G47H test-keys", 25)
+        assertEquals(DiLinkGeneration.UNKNOWN, other.generation)
+        assertEquals(Source.NONE, other.source)
+    }
+
+    @Test fun bydFrameworkOnAndroid9OrLaterIsNotDiLink2() {
+        assertEquals(DiLinkGeneration.UNKNOWN, DiLinkGeneration.detect("msm8953_64",
+            "Android/msm8953_64/msm8953_64:9/PKQ1.181105.001/x:user/test-keys", null, 28, bydFramework = true).generation)
+        assertEquals(DiLinkGeneration.DILINK_3, DiLinkGeneration.detect("DiLink3.0",
+            "BYD-AUTO/DiLink3.0/DiLink3.0:10/x:user/release-keys", null, 29, bydFramework = true).generation)
+    }
+
+    @Test fun diLink2InTheSystemVersionIsDetected() {
+        val detection = DiLinkGeneration.detect("DiLink2.0", null, null, 25)
+        assertEquals(DiLinkGeneration.DILINK_2, detection.generation)
+        assertEquals(Source.SYSTEM_VERSION, detection.source)
+    }
+
     @Test fun otherHeadUnitsAreUnknown() {
         val detection = DiLinkGeneration.detect("sdk_car_x86", "google/sdk_car_x86/generic:10/x:user/release-keys", "", 29)
         assertEquals(DiLinkGeneration.UNKNOWN, detection.generation)
@@ -69,6 +96,7 @@ class SetupGuideTest {
         fun offered(generation: DiLinkGeneration) =
             SetupGuide.features(generation).any { it.feature == Feature.DILINK4_ADB_CLUSTER }
         assertTrue(offered(DiLinkGeneration.DILINK_4))
+        assertFalse(offered(DiLinkGeneration.DILINK_2))
         assertFalse(offered(DiLinkGeneration.DILINK_3))
         assertFalse(offered(DiLinkGeneration.DILINK_5))
         assertFalse(offered(DiLinkGeneration.UNKNOWN))
