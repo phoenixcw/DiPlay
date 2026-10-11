@@ -21,6 +21,7 @@ import com.shilapi.xcertplay.transport.NcmUsbBridge
 import java.io.IOException
 import java.net.Inet6Address
 import java.net.InetAddress
+import java.net.NetworkInterface
 import java.net.ServerSocket
 import java.net.Socket
 import java.util.concurrent.atomic.AtomicBoolean
@@ -117,7 +118,7 @@ class CarPlayVpnService : VpnService() {
 
             startAirPlayServer(
                 generation,
-                AirPlayAttachment(address, config, identity, pairings, mfi, listener, media),
+                AirPlayAttachment(scopedLinkLocal(address), config, identity, pairings, mfi, listener, media),
             )
             AttachResult.Started
         } catch (error: Exception) {
@@ -373,6 +374,22 @@ class CarPlayVpnService : VpnService() {
             val origin = error.stackTrace.firstOrNull()
                 ?.let { " at ${it.className.substringAfterLast('.')}.${it.methodName}" }.orEmpty()
             return chain + origin
+        }
+
+        /**
+         * Adds the interface scope to an unscoped link-local listener address. Android 7.x binds in
+         * native code that never looks the interface up, so the kernel rejects an unscoped fe80::
+         * bind with EINVAL, reported only as "Invalid argument" (#557). Android 8+ does this lookup
+         * inside bind(), so the bound address is the same on every version.
+         */
+        internal fun scopedLinkLocal(
+            address: Inet6Address,
+            interfaceIndex: (Inet6Address) -> Int? = { NetworkInterface.getByInetAddress(it)?.index },
+        ): Inet6Address {
+            if (!address.isLinkLocalAddress || address.scopeId != 0) return address
+            val index = interfaceIndex(address)?.takeIf { it > 0 }
+                ?: throw IOException("No network interface has ${address.hostAddress}")
+            return Inet6Address.getByAddress(null, address.address, index)
         }
     }
 }
