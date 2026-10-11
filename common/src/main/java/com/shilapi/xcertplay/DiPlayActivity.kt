@@ -2610,6 +2610,7 @@ class DiPlayActivity : ComponentActivity(), AppAppearanceOwner {
     }
 
     private fun dilinkLabel(generation: DiLinkGeneration) = getString(when (generation) {
+        DiLinkGeneration.DILINK_2 -> R.string.dilink_2
         DiLinkGeneration.DILINK_3 -> R.string.dilink_3
         DiLinkGeneration.DILINK_4 -> R.string.dilink_4
         DiLinkGeneration.DILINK_5 -> R.string.dilink_5

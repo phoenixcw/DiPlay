@@ -708,6 +708,7 @@
     <string name="setup_car_unknown">DiPlay не вдалося визначити версію DiLink. Оберіть її нижче або залиште «Не впевнений».</string>
     <string name="setup_car_choose">Версія DiLink</string>
     <string name="setup_car_evidence">Версія системи: %1$s</string>
+    <string name="dilink_2">DiLink 2</string>
     <string name="dilink_3">DiLink 3</string>
     <string name="dilink_4">DiLink 4</string>
     <string name="dilink_5">DiLink 5</string>
