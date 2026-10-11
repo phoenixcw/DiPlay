@@ -248,10 +248,11 @@ class IphoneUsbHost(
                     "Re-enumerated iPhone exposes no USBMUX CarPlay configuration",
                 )
             if (!connection.setConfiguration(configuration)) {
-                Log.w(
-                    IphoneCarPlayConfiguration.TAG,
-                    "setConfiguration ${configuration.id} reported failure; claiming anyway",
-                )
+                // A kernel driver holding the current configuration (snd-usb-audio in #443) makes
+                // this fail; the report must show it, since the later NCM claim failure does not.
+                val message = "setConfiguration ${configuration.id} reported failure; claiming anyway"
+                Log.w(IphoneCarPlayConfiguration.TAG, message)
+                onDiagnostic("USB $message")
             }
             val usbMux = IphoneCarPlayConfiguration.usbMuxInterface(configuration)
                 ?: throw IphoneUsbException.Protocol("CarPlay configuration exposes no USBMUX interface")
