@@ -1,0 +1,53 @@
+name: Android 7 link-local bind
+on:
+  push:
+    branches: ['verify/**']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  device:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        api-level: [25, 28]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '25'
+      - uses: android-actions/setup-android@v3
+        with:
+          packages: platform-tools platforms;android-37.0 build-tools;36.0.0 ndk;28.2.13676358
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Build the on-device test APK
+        run: ./gradlew :shared:assembleDebugAndroidTest --stacktrace
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - name: Run on the API ${{ matrix.api-level }} emulator
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: ${{ matrix.api-level }}
+          arch: x86_64
+          target: default
+          disable-animations: true
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+          script: |
+            adb install -r -t shared/build/outputs/apk/androidTest/debug/shared-debug-androidTest.apk
+            adb shell appops set com.shilapi.xcertplay.shared.test ACTIVATE_VPN allow
+            adb shell am instrument -w com.shilapi.xcertplay.shared.test/androidx.test.runner.AndroidJUnitRunner > instrument-${{ matrix.api-level }}.txt; cat instrument-${{ matrix.api-level }}.txt
+            adb logcat -d -s LinkLocalBindTest:I > logcat-${{ matrix.api-level }}.txt; cat logcat-${{ matrix.api-level }}.txt
+            grep -q "^OK (" instrument-${{ matrix.api-level }}.txt
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: device-api-${{ matrix.api-level }}
+          path: |
+            instrument-*.txt
+            logcat-*.txt
