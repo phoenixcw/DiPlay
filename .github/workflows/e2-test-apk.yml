@@ -1,0 +1,28 @@
+name: e2 test APK
+on:
+  push:
+    branches: ['verify/e2-test-apk']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '25'
+      - uses: android-actions/setup-android@v3
+        with:
+          packages: platform-tools platforms;android-37.0 build-tools;36.0.0 ndk;28.2.13676358
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Source-only debug APK (no accessory identity)
+        run: ./gradlew :mobile:assembleDebug --stacktrace
+      - uses: actions/upload-artifact@v4
+        with:
+          name: diplay-e2-test-apk
+          path: mobile/build/outputs/apk/debug/mobile-debug.apk
+          retention-days: 14
